@@ -14,16 +14,22 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   DropFilesCubit() : super(DropFilesInitial());
 
   /// الإعدادات الافتراضية
-  PrintMode defaultPrintMode = PrintMode.duplex;
-  ColorMode defaultColorMode = ColorMode.colored;
+  PrintMode defaultPrintMode = PrintMode.oneSide;
+  ColorMode defaultColorMode = ColorMode.blackWhite;
   PaperSize defaultPaperSize = PaperSize.a4;
   OrientationMode defaultOrientation = OrientationMode.portrait;
+
   PickedFileModel? selectedFile;
 
+  // ← اختار ملف وخلّي الـ state يحمل selectedFile
   void selectFile(PickedFileModel file) {
     selectedFile = file;
     if (state is DropFilesLoaded) {
-      emit(DropFilesLoaded(files: (state as DropFilesLoaded).files));
+      final current = state as DropFilesLoaded;
+      emit(DropFilesLoaded(files: current.files, selectedFile: selectedFile));
+    } else {
+      // لو مفيش لسه ملفات محمّلة، انشئ حالة جديدة بملف واحد لو تحب
+      emit(DropFilesLoaded(files: [], selectedFile: selectedFile));
     }
   }
 
@@ -46,7 +52,7 @@ class DropFilesCubit extends Cubit<DropFilesState> {
       );
 
       if (result == null) {
-        emit(DropFilesLoaded(files: oldFiles));
+        emit(DropFilesLoaded(files: oldFiles, selectedFile: selectedFile));
         return;
       }
 
@@ -76,8 +82,7 @@ class DropFilesCubit extends Cubit<DropFilesState> {
             extension: 'pdf',
             pageCount: pageCount,
             thumbnail: img?.bytes,
-
-            /// الإعدادات الافتراضية
+            // افتراضيات لكل ملف جديد
             printMode: defaultPrintMode,
             colorMode: defaultColorMode,
             paperSize: defaultPaperSize,
@@ -87,42 +92,67 @@ class DropFilesCubit extends Cubit<DropFilesState> {
       }
 
       oldFiles.addAll(newFiles);
-      emit(DropFilesLoaded(files: oldFiles));
+
+      // لو لم يكن هناك selectedFile سابقًا، نعيّن أول ملف جديد كافتراضي (اختياري)
+      if (selectedFile == null && oldFiles.isNotEmpty) {
+        selectedFile = oldFiles.first;
+      }
+
+      emit(DropFilesLoaded(files: oldFiles, selectedFile: selectedFile));
     } catch (e) {
       emit(DropFilesError(message: e.toString()));
     }
   }
 
-  /// تعديل إعدادات ملف معين
+  /// تعديل إعدادات ملف معين — مهم: نستخدم indexWhere ونحدّث selectedFile أيضاً
   void updateFileSettings(
-    PickedFileModel file, {
-    PrintMode? printMode,
-    ColorMode? colorMode,
-    PaperSize? paperSize,
-    OrientationMode? orientation,
-  }) {
+      PickedFileModel file, {
+        PrintMode? printMode,
+        ColorMode? colorMode,
+        PaperSize? paperSize,
+        OrientationMode? orientation,
+      }) {
     if (state is! DropFilesLoaded) return;
-    final files = List<PickedFileModel>.from((state as DropFilesLoaded).files);
-    final index = files.indexOf(file);
+
+    final current = state as DropFilesLoaded;
+    final files = List<PickedFileModel>.from(current.files);
+
+    // استخدم indexWhere بمفتاح ثابت (مثل path) بدلاً من indexOf
+    final index = files.indexWhere((f) => f.path == file.path);
     if (index == -1) return;
-    files[index] = files[index].copyWith(
+
+    final updatedFile = files[index].copyWith(
       printMode: printMode,
       colorMode: colorMode,
       paperSize: paperSize,
       orientation: orientation,
     );
-    emit(DropFilesLoaded(files: files));
+
+    files[index] = updatedFile;
+
+    // إذا الملف اللي عدّلته هو الملف المختار — حدّث selectedFile ليعكس التغيير
+    if (selectedFile != null && selectedFile!.path == file.path) {
+      selectedFile = updatedFile;
+    }
+
+    emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
   }
 
   /// حذف ملف
   void removeFile(PickedFileModel file) {
     if (state is! DropFilesLoaded) return;
 
-    final files = List<PickedFileModel>.from((state as DropFilesLoaded).files);
+    final current = state as DropFilesLoaded;
+    final files = List<PickedFileModel>.from(current.files);
 
-    files.remove(file);
+    files.removeWhere((f) => f.path == file.path);
 
-    emit(DropFilesLoaded(files: files));
+    // لو حذفنا الملف المختار نصفي selectedFile أو نختار ملف آخر تلقائياً
+    if (selectedFile != null && selectedFile!.path == file.path) {
+      selectedFile = files.isNotEmpty ? files.first : null;
+    }
+
+    emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
   }
 
   /// إجمالي الصفحات
@@ -131,7 +161,7 @@ class DropFilesCubit extends Cubit<DropFilesState> {
 
     return (state as DropFilesLoaded).files.fold(
       0,
-      (sum, f) => sum + (f.pageCount ?? 0),
+          (sum, f) => sum + (f.pageCount ?? 0),
     );
   }
 }

@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constant/app_colors.dart';
 import '../../cubit/drop_files_cubit/drop_files_cubit.dart';
+import 'custom_text_form_feild.dart';
 
 class TotalPriceContainer extends StatelessWidget {
-  const TotalPriceContainer({super.key});
-
+   TotalPriceContainer({super.key});
+  final TextEditingController allPriceController = TextEditingController();
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery
@@ -30,12 +32,15 @@ class TotalPriceContainer extends StatelessWidget {
                 crossAxisAlignment: .start,
                 children: [
                   Row(
-                    mainAxisSize: .max ,
-                    children: [],
+                    children: [
+                      Text("Enter Paper Price: "),
+                      SizedBox(width: 30,),
+                      Form(
+                          key: formKey,
+                          child: CustomTextFormFeild(priceController: allPriceController)),
+                    ],
                   ),
-                  Align(
-                      alignment: Alignment.topRight,
-                      child: Text("for one page 0.75 .LE",textAlign: TextAlign.right,)),
+                  SizedBox(height: 10,),
                   if(state is DropFilesLoaded)...[
                     Text("${state.files.length} File"),
                   ],
