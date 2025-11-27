@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class CustomTextFormFeild extends StatelessWidget {
-   CustomTextFormFeild({super.key, required this.priceController});
+   CustomTextFormFeild({super.key, required this.priceController, this.onChanged});
   final TextEditingController priceController ;
+    void Function(String)? onChanged;
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -17,7 +18,8 @@ class CustomTextFormFeild extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 10),
-          )
+          ),
+        onChanged:onChanged ,
       ),
     );
   }

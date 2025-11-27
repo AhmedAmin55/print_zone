@@ -10,6 +10,8 @@ import '../../data/models/file_model.dart';
 
 part 'drop_files_state.dart';
 
+
+
 class DropFilesCubit extends Cubit<DropFilesState> {
   DropFilesCubit() : super(DropFilesInitial());
 
@@ -19,21 +21,63 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   PaperSize defaultPaperSize = PaperSize.a4;
   OrientationMode defaultOrientation = OrientationMode.portrait;
 
+  /// سعر الورقة
+  double pricePerPage = 0.75;
+
+  /// الملف المختار
   PickedFileModel? selectedFile;
 
-  // ← اختار ملف وخلّي الـ state يحمل selectedFile
-  void selectFile(PickedFileModel file) {
-    selectedFile = file;
+  // =====================================================
+  // 🔥 تعيين سعر الورقة
+  // =====================================================
+  void setPricePerPage(double price) {
+    pricePerPage = price;
+
     if (state is DropFilesLoaded) {
-      final current = state as DropFilesLoaded;
-      emit(DropFilesLoaded(files: current.files, selectedFile: selectedFile));
-    } else {
-      // لو مفيش لسه ملفات محمّلة، انشئ حالة جديدة بملف واحد لو تحب
-      emit(DropFilesLoaded(files: [], selectedFile: selectedFile));
+      final s = state as DropFilesLoaded;
+      emit(DropFilesLoaded(files: s.files, selectedFile: selectedFile));
     }
   }
 
-  /// إضافة ملفات
+  // =====================================================
+  // 🔥 إجمالي الصفحات
+  // =====================================================
+  int getTotalPages() {
+    if (state is! DropFilesLoaded) return 0;
+
+    return (state as DropFilesLoaded).files.fold(
+      0,
+          (sum, f) => sum + (f.pageCount ?? 0),
+    );
+  }
+
+  // =====================================================
+  // 🔥 السعر النهائي = عدد الصفحات × سعر الورقة
+  // =====================================================
+  double getFinalPrice() {
+    return getTotalPages() * pricePerPage;
+  }
+
+  // سعر ملف واحد
+  double getFilePrice(PickedFileModel file) {
+    return (file.pageCount ?? 0) * pricePerPage;
+  }
+
+  // =====================================================
+  // 🔥 اختيار ملف
+  // =====================================================
+  void selectFile(PickedFileModel file) {
+    selectedFile = file;
+
+    if (state is DropFilesLoaded) {
+      final s = state as DropFilesLoaded;
+      emit(DropFilesLoaded(files: s.files, selectedFile: selectedFile));
+    }
+  }
+
+  // =====================================================
+  // 🔥 إضافة ملفات
+  // =====================================================
   Future<void> pickAndLoadFiles() async {
     List<PickedFileModel> oldFiles = [];
 
@@ -82,7 +126,8 @@ class DropFilesCubit extends Cubit<DropFilesState> {
             extension: 'pdf',
             pageCount: pageCount,
             thumbnail: img?.bytes,
-            // افتراضيات لكل ملف جديد
+
+            /// الإعدادات الافتراضية
             printMode: defaultPrintMode,
             colorMode: defaultColorMode,
             paperSize: defaultPaperSize,
@@ -93,7 +138,6 @@ class DropFilesCubit extends Cubit<DropFilesState> {
 
       oldFiles.addAll(newFiles);
 
-      // لو لم يكن هناك selectedFile سابقًا، نعيّن أول ملف جديد كافتراضي (اختياري)
       if (selectedFile == null && oldFiles.isNotEmpty) {
         selectedFile = oldFiles.first;
       }
@@ -104,7 +148,9 @@ class DropFilesCubit extends Cubit<DropFilesState> {
     }
   }
 
-  /// تعديل إعدادات ملف معين — مهم: نستخدم indexWhere ونحدّث selectedFile أيضاً
+  // =====================================================
+  // 🔥 تعديل إعدادات ملف
+  // =====================================================
   void updateFileSettings(
       PickedFileModel file, {
         PrintMode? printMode,
@@ -117,28 +163,28 @@ class DropFilesCubit extends Cubit<DropFilesState> {
     final current = state as DropFilesLoaded;
     final files = List<PickedFileModel>.from(current.files);
 
-    // استخدم indexWhere بمفتاح ثابت (مثل path) بدلاً من indexOf
     final index = files.indexWhere((f) => f.path == file.path);
     if (index == -1) return;
 
-    final updatedFile = files[index].copyWith(
+    final updated = files[index].copyWith(
       printMode: printMode,
       colorMode: colorMode,
       paperSize: paperSize,
       orientation: orientation,
     );
 
-    files[index] = updatedFile;
+    files[index] = updated;
 
-    // إذا الملف اللي عدّلته هو الملف المختار — حدّث selectedFile ليعكس التغيير
-    if (selectedFile != null && selectedFile!.path == file.path) {
-      selectedFile = updatedFile;
+    if (selectedFile != null && selectedFile!.path == updated.path) {
+      selectedFile = updated;
     }
 
     emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
   }
 
-  /// حذف ملف
+  // =====================================================
+  // 🔥 حذف ملف
+  // =====================================================
   void removeFile(PickedFileModel file) {
     if (state is! DropFilesLoaded) return;
 
@@ -147,21 +193,10 @@ class DropFilesCubit extends Cubit<DropFilesState> {
 
     files.removeWhere((f) => f.path == file.path);
 
-    // لو حذفنا الملف المختار نصفي selectedFile أو نختار ملف آخر تلقائياً
     if (selectedFile != null && selectedFile!.path == file.path) {
       selectedFile = files.isNotEmpty ? files.first : null;
     }
 
     emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
-  }
-
-  /// إجمالي الصفحات
-  int getTotalPages() {
-    if (state is! DropFilesLoaded) return 0;
-
-    return (state as DropFilesLoaded).files.fold(
-      0,
-          (sum, f) => sum + (f.pageCount ?? 0),
-    );
   }
 }
