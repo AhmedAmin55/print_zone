@@ -44,7 +44,7 @@ class LogoAndSearchRow extends StatelessWidget {
               ],
             ),
             Spacer(),
-            CustomSearchFeild(),
+           // CustomSearchFeild(),
           ],
         ),
       ),

@@ -3,21 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constant/app_colors.dart';
-import '../../cubit/drop_files_cubit/drop_files_cubit.dart';
+import '../../cubit/drop_files_cubit_one_side/drop_files_cubit_one_side.dart';
 import '../../data/models/file_model.dart';
 import 'custom_text_form_feild.dart';
 
-class FileProperties extends StatelessWidget {
-  FileProperties({super.key});
 
-  final TextEditingController priceController = TextEditingController();
-  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+class FilePropertiesSection extends StatelessWidget {
+  // 1. نستقبل الملف كمتغير
+  final PickedFileModel? file;
+
+  // 2. نستقبل دالة التنفيذ التي سنستدعيها عند التغيير
+  final Function(PickedFileModel file, PrintMode newMode) onPrintModeChanged;
+
+  const FilePropertiesSection({
+    super.key,
+    required this.file,
+    required this.onPrintModeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<DropFilesCubit>();
-    final file = cubit.selectedFile;
-
     // لو مفيش ملف مختار
     if (file == null) {
       return const Center(
@@ -28,88 +34,36 @@ class FileProperties extends StatelessWidget {
       );
     }
 
-    return Form(
-      key: formKey,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              file.name,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 20),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            file!.name,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 20),
 
-            // **************  نوع الطباعة  **************
-            _buildDropDown<PrintMode>(
-              context: context,
-              title: "نوع الطباعة",
-              value: file.printMode,
-              items: PrintMode.values,
-              labelBuilder: getPrintModeLabel,
-              onChanged: (v) {
-                cubit.updateFileSettings(file, printMode: v);
-              },
-            ),
-
-            const SizedBox(height: 15),
-
-            // **************  ألوان / أبيض وأسود  **************
-            _buildDropDown<ColorMode>(
-              context: context,
-              title: "اللون",
-              value: file.colorMode,
-              items: ColorMode.values,
-              labelBuilder: getColorModeLabel,
-              onChanged: (v) {
-                cubit.updateFileSettings(file, colorMode: v);
-              },
-            ),
-
-            const SizedBox(height: 15),
-
-            // **************  المقاس  **************
-            _buildDropDown<PaperSize>(
-              context: context,
-              title: "مقاس الورق",
-              value: file.paperSize,
-              items: PaperSize.values,
-              labelBuilder: getPaperSizeLabel,
-              onChanged: (v) {
-                cubit.updateFileSettings(file, paperSize: v);
-              },
-            ),
-
-            const SizedBox(height: 15),
-
-            // **************  الاتجاه **************
-            _buildDropDown<OrientationMode>(
-              context: context,
-              title: "الاتجاه",
-              value: file.orientation,
-              items: OrientationMode.values,
-              labelBuilder: getOrientationLabel,
-              onChanged: (v) {
-                cubit.updateFileSettings(file, orientation: v);
-              },
-            ),
-            SizedBox(height: 15),
-            Row(
-              children: [
-                Text("Enter Paper Price for this file: "),
-                SizedBox(width: 30),
-                CustomTextFormFeild(priceController: priceController),
-              ],
-            ),
-          ],
-        ),
+          // ************** نوع الطباعة  **************
+          _buildDropDown<PrintMode>(
+            context: context,
+            title: "نوع الطباعة",
+            value: file!.printMode,
+            items: PrintMode.values,
+            labelBuilder: getPrintModeLabel,
+            onChanged: (newMode) {
+              // هنا ننادي الدالة الممررة من الخارج
+              onPrintModeChanged(file!, newMode);
+            },
+          ),
+        ],
       ),
     );
   }
 
-  // ************** Widget خاص بالدروب داون  **************
+  // ************** Widget خاص بالدروب داون **************
   Widget _buildDropDown<T>({
     required BuildContext context,
     required String title,
@@ -143,10 +97,13 @@ class FileProperties extends StatelessWidget {
           items: items
               .map(
                 (item) => DropdownMenuItem<T>(
-                  value: item,
-                  child: Text(labelBuilder(item)),
-                ),
-              )
+              value: item,
+              child: Text(
+                labelBuilder(item),
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+          )
               .toList(),
           onChanged: (val) {
             if (val != null) onChanged(val);
@@ -159,45 +116,15 @@ class FileProperties extends StatelessWidget {
 }
 
 // ************** Label Methods **************
-
 String getPrintModeLabel(PrintMode m) {
   switch (m) {
     case PrintMode.oneSide:
-      return "وش واحد";
+      return "وجه واحد";
     case PrintMode.duplex:
-      return "وش وضهر";
+      return "وجه و ظهر";
     case PrintMode.twoFrontBack:
-      return "وشين وضهرين";
+      return "2 وجه و 2 ظهر";
     case PrintMode.fourFrontBack:
-      return "4 وشوش و4 ظهر";
-  }
-}
-
-String getColorModeLabel(ColorMode m) {
-  switch (m) {
-    case ColorMode.blackWhite:
-      return "أبيض وأسود";
-    case ColorMode.colored:
-      return "ألوان";
-  }
-}
-
-String getPaperSizeLabel(PaperSize m) {
-  switch (m) {
-    case PaperSize.a4:
-      return "A4";
-    case PaperSize.a3:
-      return "A3";
-    case PaperSize.letter:
-      return "Letter";
-  }
-}
-
-String getOrientationLabel(OrientationMode m) {
-  switch (m) {
-    case OrientationMode.portrait:
-      return "طولي";
-    case OrientationMode.landscape:
-      return "عرضي";
+      return "4 وجه و4 ظهر";
   }
 }

@@ -26,8 +26,8 @@ class OrderMenuWidget extends StatelessWidget {
             Image.asset(AppImages.orderIcon, width: width * 0.03),
             SizedBox(width: 15),
             Column(
-              mainAxisAlignment: .center,
-              children: [
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,              children: [
                 Text(
                   AppTexts.orderMenu,
                   style: AppTextsStyle.HarmattanBold45(

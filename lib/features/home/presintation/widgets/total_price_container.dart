@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constant/app_colors.dart';
-import '../../cubit/drop_files_cubit/drop_files_cubit.dart';
+import '../../cubit/drop_files_cubit_one_side/drop_files_cubit_one_side.dart';
 import 'custom_text_form_feild.dart';
+
 
 class TotalPriceContainer extends StatelessWidget {
   TotalPriceContainer({super.key});
 
   final TextEditingController allPriceController = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +28,7 @@ class TotalPriceContainer extends StatelessWidget {
         ),
         child: Row(
           children: [
-            BlocBuilder<DropFilesCubit, DropFilesState>(
+            BlocBuilder<DropFilesCubitOneSide, DropFilesStateOneSide>(
               builder: (context, state) {
                 return Column(
                   mainAxisAlignment: .center,
@@ -40,22 +42,31 @@ class TotalPriceContainer extends StatelessWidget {
                           priceController: allPriceController,
                           onChanged: (value) {
                             final price = double.tryParse(value) ?? 0.0;
-                            context.read<DropFilesCubit>().setPricePerPage(
+                            context.read<DropFilesCubitOneSide>().setPricePerPage(
                               price,
                             );
                           },
                         ),
                       ],
                     ),
-                    SizedBox(height: 10),
-                    if (state is DropFilesLoaded) ...[
-                      Text("${state.files.length} File"),
+                    if (state is DropFilesOneSideLoaded) ...[
+                  Row(children: [
+                    Text("${state.files.length} File"),
+                    SizedBox(width: 30,),
+                    Text("${BlocProvider.of<DropFilesCubitOneSide>(context).getTotalPages()} Pages")
+                  ],)
                     ],
-                    if (state is DropFilesLoading) ...[Text("Loading...")],
-                    if (state is DropFilesInitial) ...[Text("0 files")],
-                    SizedBox(height: 15),
+                    if (state is DropFilesOneSideLoading) ...[Text("Loading...")],
+                    if (state is DropFilesOneSideInitial) ...[
+                      Row(
+                        children: [
+                          Text("0 files"),
+                          Text("0 pages")
+                        ],
+                      )
+                    ],
                     Text(
-                      "${BlocProvider.of<DropFilesCubit>(context).getFinalPrice()} Page",
+                      "${BlocProvider.of<DropFilesCubitOneSide>(context).getFinalPrice()} total price",
                     ),
                   ],
                 );

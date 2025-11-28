@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:print_zone/core/constant/app_colors.dart';
 import 'package:print_zone/core/constant/app_textstyle.dart';
 
-import '../../cubit/drop_files_cubit/drop_files_cubit.dart';
+import '../../cubit/drop_files_cubit_one_side/drop_files_cubit_one_side.dart';
 import '../screens/ff.dart';
 
 class DropedFilesSection extends StatelessWidget {
@@ -18,86 +18,87 @@ class DropedFilesSection extends StatelessWidget {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
     var state =
-        BlocProvider.of<DropFilesCubit>(context).state as DropFilesLoaded;
-    return Expanded(
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 6,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.75,
-        ),
-        itemCount: state.files.length + 1,
-        itemBuilder: (context, index) {
-          if (index == state.files.length) {
-            return GestureDetector(
-              onTap: () {
-                BlocProvider.of<DropFilesCubit>(context).pickAndLoadFiles();
-              },
-              child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Center(
-                  child: Icon(Icons.add, size: 40, color: Colors.white),
-                ),
-              ),
-            );
-          }
-
-          final f = state.files[index];   // ← ✔ اتنقلت فوق قبل الاستخدام
-
+        BlocProvider.of<DropFilesCubitOneSide>(context).state as DropFilesOneSideLoaded;
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        childAspectRatio:  width < 1400 ? 0.65 : 0.75,
+      ),
+      itemCount: state.files.length + 1,
+      itemBuilder: (context, index) {
+        if (index == state.files.length) {
           return GestureDetector(
             onTap: () {
-              context.read<DropFilesCubit>().selectFile(f); // ← ✔ اختيار الملف
+              BlocProvider.of<DropFilesCubitOneSide>(context).pickAndLoadFiles();
             },
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
-                color: AppColors.primaryColor,
+                color: Colors.blueAccent,
                 borderRadius: BorderRadius.circular(25),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    width: width,
-                    height: height * 0.145,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Image.memory(f.thumbnail!),
-                    ),
+              child: Center(
+                child: Icon(Icons.add, size: 40, color: Colors.white),
+              ),
+            ),
+          );
+        }
+
+        final f = state.files[index];   // ← ✔ اتنقلت فوق قبل الاستخدام
+
+        return GestureDetector(
+          onTap: () {
+            context.read<DropFilesCubitOneSide>().selectFile(f); // ← ✔ اختيار الملف
+          },
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  SizedBox(height: 10),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
-                      children: [
+                  width: width,
+                  height: height * 0.145,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Image.memory(f.thumbnail!),
+                  ),
+                ),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    children: [
+                      Text(
+                        f.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextsStyle.HarmattanBold45(context)
+                            .copyWith(fontSize: 20),
+                      ),
+                      if(width<1400 )...[
                         Text(
-                          f.name,
-                          overflow: TextOverflow.ellipsis,
+                          "pages: ${f.pageCount}",
                           style: AppTextsStyle.HarmattanBold45(context)
                               .copyWith(fontSize: 20),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              "pages: ${f.pageCount}",
-                              style: AppTextsStyle.HarmattanBold45(context)
-                                  .copyWith(fontSize: 20),
-                            ),
-                            Spacer(),
-                            GestureDetector(
+                        Flexible(
+                          child: SizedBox(
+                            height: height*0.04,
+                            child: GestureDetector(
                               onTap: () {
-                                BlocProvider.of<DropFilesCubit>(context).removeFile(f);
+                                BlocProvider.of<DropFilesCubitOneSide>(context).removeFile(f);
                               },
                               child: Container(
-                                height: height * 0.035,
+                                height: height * 0.04,
+                                padding: EdgeInsets.all(5),
                                 decoration: BoxDecoration(
                                   color: AppColors.redAccent,
                                   shape: BoxShape.circle,
@@ -106,22 +107,57 @@ class DropedFilesSection extends StatelessWidget {
                                   child: Icon(
                                     Icons.delete_outline,
                                     color: AppColors.white,
-                                    size: 20,
+                                    size:20 ,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if(width>1400 )...[
+                        Row(
+                          children: [
+                            Text(
+                              "pages: ${f.pageCount}",
+                              style: AppTextsStyle.HarmattanBold45(context)
+                                  .copyWith(fontSize: 20),
+                            ),
+                            Spacer(),
+                            SizedBox(
+                              height: height*0.04,
+                              child: GestureDetector(
+                                onTap: () {
+                                  BlocProvider.of<DropFilesCubitOneSide>(context).removeFile(f);
+                                },
+                                child: Container(
+                                  height: height * 0.04,
+                                  padding: EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.delete_outline,
+                                      color: AppColors.white,
+                                      size:20 ,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ]
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

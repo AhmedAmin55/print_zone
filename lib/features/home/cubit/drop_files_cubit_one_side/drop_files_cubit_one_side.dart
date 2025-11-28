@@ -8,12 +8,12 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../data/models/file_model.dart';
 
-part 'drop_files_state.dart';
+part 'drop_files_state_one_side.dart';
 
 
 
-class DropFilesCubit extends Cubit<DropFilesState> {
-  DropFilesCubit() : super(DropFilesInitial());
+class DropFilesCubitOneSide extends Cubit<DropFilesStateOneSide> {
+  DropFilesCubitOneSide() : super(DropFilesOneSideInitial());
 
   /// الإعدادات الافتراضية
   PrintMode defaultPrintMode = PrintMode.oneSide;
@@ -33,9 +33,9 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   void setPricePerPage(double price) {
     pricePerPage = price;
 
-    if (state is DropFilesLoaded) {
-      final s = state as DropFilesLoaded;
-      emit(DropFilesLoaded(files: s.files, selectedFile: selectedFile));
+    if (state is DropFilesOneSideLoaded) {
+      final s = state as DropFilesOneSideLoaded;
+      emit(DropFilesOneSideLoaded(files: s.files, selectedFile: selectedFile));
     }
   }
 
@@ -43,9 +43,9 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   // 🔥 إجمالي الصفحات
   // =====================================================
   int getTotalPages() {
-    if (state is! DropFilesLoaded) return 0;
+    if (state is! DropFilesOneSideLoaded) return 0;
 
-    return (state as DropFilesLoaded).files.fold(
+    return (state as DropFilesOneSideLoaded).files.fold(
       0,
           (sum, f) => sum + (f.pageCount ?? 0),
     );
@@ -55,23 +55,57 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   // 🔥 السعر النهائي = عدد الصفحات × سعر الورقة
   // =====================================================
   double getFinalPrice() {
-    return getTotalPages() * pricePerPage;
+    if (state is! DropFilesOneSideLoaded) return 0;
+
+    final files = (state as DropFilesOneSideLoaded).files;
+
+    double total = 0;
+
+    for (var f in files) {
+      total += getFilePrice(f);
+    }
+
+    return total;
   }
 
   // سعر ملف واحد
   double getFilePrice(PickedFileModel file) {
-    return (file.pageCount ?? 0) * pricePerPage;
-  }
+    final pages = file.pageCount ?? 0;
 
+    // عدد الورق المستخدم فعلياً
+    int sheets = pages;
+
+    switch (file.printMode) {
+      case PrintMode.oneSide:
+        sheets = pages; // كل صفحة ورقة
+        break;
+
+      case PrintMode.duplex:
+        sheets = (pages / 2).ceil();  // كل ورقة عليها وجهين
+
+        break;
+
+      case PrintMode.twoFrontBack:
+        sheets = (pages / 4).ceil();  // نفس فكرة الوشين (لو ليها حساب تاني عدّله)
+
+        break;
+
+      case PrintMode.fourFrontBack:
+        sheets = (pages / 8).ceil();  // كل ورقة 4 وشوش (لو هي دي نيتك)
+        break;
+    }
+
+    return sheets * pricePerPage;
+  }
   // =====================================================
   // 🔥 اختيار ملف
   // =====================================================
   void selectFile(PickedFileModel file) {
     selectedFile = file;
 
-    if (state is DropFilesLoaded) {
-      final s = state as DropFilesLoaded;
-      emit(DropFilesLoaded(files: s.files, selectedFile: selectedFile));
+    if (state is DropFilesOneSideLoaded) {
+      final s = state as DropFilesOneSideLoaded;
+      emit(DropFilesOneSideLoaded(files: s.files, selectedFile: selectedFile));
     }
   }
 
@@ -81,11 +115,11 @@ class DropFilesCubit extends Cubit<DropFilesState> {
   Future<void> pickAndLoadFiles() async {
     List<PickedFileModel> oldFiles = [];
 
-    if (state is DropFilesLoaded) {
-      oldFiles = List.from((state as DropFilesLoaded).files);
+    if (state is DropFilesOneSideLoaded) {
+      oldFiles = List.from((state as DropFilesOneSideLoaded).files);
     }
 
-    emit(DropFilesLoading());
+    emit(DropFilesOneSideLoading());
 
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -96,7 +130,7 @@ class DropFilesCubit extends Cubit<DropFilesState> {
       );
 
       if (result == null) {
-        emit(DropFilesLoaded(files: oldFiles, selectedFile: selectedFile));
+        emit(DropFilesOneSideLoaded(files: oldFiles, selectedFile: selectedFile));
         return;
       }
 
@@ -142,9 +176,9 @@ class DropFilesCubit extends Cubit<DropFilesState> {
         selectedFile = oldFiles.first;
       }
 
-      emit(DropFilesLoaded(files: oldFiles, selectedFile: selectedFile));
+      emit(DropFilesOneSideLoaded(files: oldFiles, selectedFile: selectedFile));
     } catch (e) {
-      emit(DropFilesError(message: e.toString()));
+      emit(DropFilesOneSideError(message: e.toString()));
     }
   }
 
@@ -158,10 +192,11 @@ class DropFilesCubit extends Cubit<DropFilesState> {
         PaperSize? paperSize,
         OrientationMode? orientation,
       }) {
-    if (state is! DropFilesLoaded) return;
 
-    final current = state as DropFilesLoaded;
-    final files = List<PickedFileModel>.from(current.files);
+    if (state is! DropFilesOneSideLoaded) return;
+
+    final s = state as DropFilesOneSideLoaded;
+    final files = List<PickedFileModel>.from(s.files);
 
     final index = files.indexWhere((f) => f.path == file.path);
     if (index == -1) return;
@@ -175,20 +210,25 @@ class DropFilesCubit extends Cubit<DropFilesState> {
 
     files[index] = updated;
 
+    // تحديث الملف المختار
     if (selectedFile != null && selectedFile!.path == updated.path) {
       selectedFile = updated;
     }
 
-    emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
+    // أهم جزء: إعادة emit لضمان إعادة حساب السعر
+    emit(DropFilesOneSideLoaded(
+      files: files,
+      selectedFile: selectedFile,
+    ));
   }
 
   // =====================================================
   // 🔥 حذف ملف
   // =====================================================
   void removeFile(PickedFileModel file) {
-    if (state is! DropFilesLoaded) return;
+    if (state is! DropFilesOneSideLoaded) return;
 
-    final current = state as DropFilesLoaded;
+    final current = state as DropFilesOneSideLoaded;
     final files = List<PickedFileModel>.from(current.files);
 
     files.removeWhere((f) => f.path == file.path);
@@ -197,6 +237,6 @@ class DropFilesCubit extends Cubit<DropFilesState> {
       selectedFile = files.isNotEmpty ? files.first : null;
     }
 
-    emit(DropFilesLoaded(files: files, selectedFile: selectedFile));
+    emit(DropFilesOneSideLoaded(files: files, selectedFile: selectedFile));
   }
 }
