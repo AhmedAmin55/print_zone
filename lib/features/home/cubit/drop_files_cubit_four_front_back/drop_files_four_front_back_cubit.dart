@@ -18,13 +18,41 @@ class DropFilesCubitFourFront extends Cubit<DropFilesStateFourFront> {
     final sheets = (pages / 8).ceil();
     return sheets * pricePerPage;
   }
+  void selectFile(PickedFileModel file) {
+    selectedFile = file;
 
+    if (state is DropFilesFourFrontLoaded) {
+      final s = state as DropFilesFourFrontLoaded;
+      emit(DropFilesFourFrontLoaded(files: s.files, selectedFile: selectedFile));
+    }
+  }
+  void removeFile(PickedFileModel file) {
+    if (state is! DropFilesFourFrontLoaded) return;
+
+    final current = state as DropFilesFourFrontLoaded;
+    final files = List<PickedFileModel>.from(current.files);
+
+    files.removeWhere((f) => f.path == file.path);
+
+    if (selectedFile != null && selectedFile!.path == file.path) {
+      selectedFile = files.isNotEmpty ? files.first : null;
+    }
+
+    emit(DropFilesFourFrontLoaded(files: files, selectedFile: selectedFile));
+  }
   double getFinalPrice() {
     if (state is! DropFilesFourFrontLoaded) return 0;
-    return (state as DropFilesFourFrontLoaded)
-        .files
-        .fold(0.0, (s, f) => s + getFilePrice(f));
+
+    // 1) اجمع كل الصفحات
+    final totalPages = getTotalPages();
+
+    // 2) احسب عدد الشيتات (8 صفحات لكل شيت)
+    final totalSheets = (totalPages / 8).ceil();
+
+    // 3) احسب السعر النهائي
+    return totalSheets * pricePerPage;
   }
+
   void setPricePerPage(double price) {
     pricePerPage = price;
 

@@ -7,6 +7,8 @@ import '../../data/models/file_model.dart';
 
 part 'drop_files_duplex_state.dart';
 
+
+
 class DropFilesCubitDuplex extends Cubit<DropFilesStateDuplex> {
   DropFilesCubitDuplex() : super(DropFilesDuplexInitial());
 
@@ -23,6 +25,15 @@ class DropFilesCubitDuplex extends Cubit<DropFilesStateDuplex> {
     }
   }
 
+  void selectFile(PickedFileModel file) {
+    selectedFile = file;
+
+    if (state is DropFilesDuplexLoaded) {
+      final s = state as DropFilesDuplexLoaded;
+      emit(DropFilesDuplexLoaded(files: s.files, selectedFile: selectedFile));
+    }
+  }
+
   int getTotalPages() {
     if (state is! DropFilesDuplexLoaded) return 0;
     return (state as DropFilesDuplexLoaded)
@@ -30,19 +41,39 @@ class DropFilesCubitDuplex extends Cubit<DropFilesStateDuplex> {
         .fold(0, (s, f) => s + (f.pageCount ?? 0));
   }
 
-  double getFilePrice(PickedFileModel file) {
-    final pages = file.pageCount ?? 0;
-    final sheets = (pages / 2).ceil(); // Duplex
-    return sheets * pricePerPage;
-  }
+  /// ****** أهم تعديل هنا ******
+  /// Duplex sheets = ceil(pages / 2)
+  // double getFilePrice(PickedFileModel file) {
+  //   final pages = file.pageCount ?? 0;
+  //
+  //   final sheets = (pages / 2);
+  //
+  //   final price = sheets * pricePerPage;
+  //
+  //   print("---- DEBUG DUPLEX ----");
+  //   print("Pages: $pages");
+  //   print("Sheets: $sheets");
+  //   print("Price: $price");
+  //   print("----------------------");
+  //
+  //   return price;
+  // }
+
 
   double getFinalPrice() {
     if (state is! DropFilesDuplexLoaded) return 0;
-    return (state as DropFilesDuplexLoaded)
-        .files
-        .fold(0.0, (s, f) => s + getFilePrice(f));
-  }
 
+    // إجمالي كل الصفحات لكل الملفات
+    final totalPages = (state as DropFilesDuplexLoaded)
+        .files
+        .fold(0, (sum, file) => sum + (file.pageCount ?? 0));
+
+    // عدد الشيتات = ceil(totalPages / 2)
+    final sheets = (totalPages / 2).ceil();
+
+    // السعر النهائي
+    return sheets * pricePerPage;
+  }
   Future<void> pickAndLoadFiles() async {
     List<PickedFileModel> oldFiles = [];
 
@@ -80,7 +111,6 @@ class DropFilesCubitDuplex extends Cubit<DropFilesStateDuplex> {
         );
 
         await page.close();
-        await doc.close();
 
         newFiles.add(
           PickedFileModel(
@@ -92,6 +122,8 @@ class DropFilesCubitDuplex extends Cubit<DropFilesStateDuplex> {
             thumbnail: img?.bytes,
           ),
         );
+
+        await doc.close(); // صح كده
       }
 
       oldFiles.addAll(newFiles);

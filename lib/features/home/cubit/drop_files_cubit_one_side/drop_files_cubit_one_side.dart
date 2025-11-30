@@ -72,30 +72,24 @@ class DropFilesCubitOneSide extends Cubit<DropFilesStateOneSide> {
   double getFilePrice(PickedFileModel file) {
     final pages = file.pageCount ?? 0;
 
-    // عدد الورق المستخدم فعلياً
-    int sheets = pages;
+    return pages * pricePerPage;
 
-    switch (file.printMode) {
-      case PrintMode.oneSide:
-        sheets = pages; // كل صفحة ورقة
-        break;
-
-      case PrintMode.duplex:
-        sheets = (pages / 2).ceil();  // كل ورقة عليها وجهين
-
-        break;
-
-      case PrintMode.twoFrontBack:
-        sheets = (pages / 4).ceil();  // نفس فكرة الوشين (لو ليها حساب تاني عدّله)
-
-        break;
-
-      case PrintMode.fourFrontBack:
-        sheets = (pages / 8).ceil();  // كل ورقة 4 وشوش (لو هي دي نيتك)
-        break;
-    }
-
-    return sheets * pricePerPage;
+    // int sheets = pages;
+    // switch (file.printMode) {
+    //   case PrintMode.oneSide:
+    //     sheets = pages; // كل صفحة ورقة
+    //     break;
+    //   case PrintMode.duplex:
+    //     sheets = (pages / 2).round();  // كل ورقة عليها وجهين
+    //     break;
+    //   case PrintMode.twoFrontBack:
+    //     sheets = (pages / 4).round();  // نفس فكرة الوشين (لو ليها حساب تاني عدّله)
+    //     break;
+    //   case PrintMode.fourFrontBack:
+    //     sheets = (pages / 8).round();  // كل ورقة 4 وشوش (لو هي دي نيتك)
+    //     break;
+    // }
+    // return sheets * pricePerPage;
   }
   // =====================================================
   // 🔥 اختيار ملف
